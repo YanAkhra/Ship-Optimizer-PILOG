@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
-
+ 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
@@ -14,13 +14,13 @@ const STATES = {
   sailing_back: { label:"Layar Kembali",   color:"#0F6E56", short:"LAYAR↓"  },
   idle:         { label:"Idle",            color:"#B4B2A9", short:"IDLE"    },
 };
-
+ 
 const SHIP_COLORS = {
   "GC-01":"#185FA5","GC-02":"#3B6D11","GC-03":"#BA7517","GC-04":"#534AB7",
   "GC-05":"#0F6E56","GC-06":"#993556","GT-01":"#854F0B","GT-02":"#A32D2D",
 };
 const EXT_COLOR = "#D4537E";
-
+ 
 const INIT_SHIPS = [
   { id:"GC-01", type:"gc",     cap:7000,  route:"semarang",         active:true },
   { id:"GC-02", type:"gc",     cap:7000,  route:"cilacap",          active:true },
@@ -31,7 +31,7 @@ const INIT_SHIPS = [
   { id:"GT-01", type:"tanker", cap:5700,  route:"palembang-gresik", active:true },
   { id:"GT-02", type:"tanker", cap:13200, route:"bontang-gresik",   active:true },
 ];
-
+ 
 // ═══════════════════════════════════════════════════════════════
 // SIMULATION ENGINE
 // ═══════════════════════════════════════════════════════════════
@@ -39,7 +39,7 @@ function simulate(cfg, ships) {
   let seed = cfg.seed;
   const rng = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 0xFFFFFFFF; };
   const ri  = (a, b) => a + Math.floor(rng() * (b - a + 1));
-
+ 
   // ── Production downtime periods (SEPARATE for GC and Tanker) ──
   const genDowntimes = (perMonth, dMin, dMax) => {
     const dts = [];
@@ -53,15 +53,15 @@ function simulate(cfg, ships) {
     }
     return dts;
   };
-
+ 
   const gcDowntimes = genDowntimes(cfg.downPerMonth, cfg.downMin, cfg.downMax);
   const tankerDowntimes = genDowntimes(cfg.tankerDownPerMonth, cfg.tankerDownMin, cfg.tankerDownMax);
-
+ 
   const isProdDown = (day, shipType) => {
     const dts = shipType === "gc" ? gcDowntimes : tankerDowntimes;
     return dts.some(dt => day >= dt.start && day < dt.end);
   };
-
+ 
   // Compute loading events split by downtime
   function computeLoadEvents(startDay, nomDays, shipType) {
     const evts = [];
@@ -76,7 +76,7 @@ function simulate(cfg, ships) {
     flush(segType, day);
     return { evts, endDay: day };
   }
-
+ 
   // ── Generic interval-scheduling berth allocator ───────────────
   function makeAlloc(n) {
     const bSlots = Array.from({ length: n }, () => []);
@@ -113,7 +113,7 @@ function simulate(cfg, ships) {
       },
     };
   }
-
+ 
   // SEPARATE PORT ALLOCATORS for GC and Tanker
   const gcOriginA    = makeAlloc(cfg.gcBerths);      // Port-II, Port-V for General Cargo
   const tankerOriginA = makeAlloc(cfg.tankerBerths); // Port-Gas-1, Port-Gas-2 for Tankers
@@ -121,7 +121,7 @@ function simulate(cfg, ships) {
   const cilA         = makeAlloc(cfg.cilBerths);
   const grsA         = makeAlloc(cfg.grsBerths);
   const destMap      = { semarang: semA, cilacap: cilA, gresik: grsA };
-
+ 
   // ── Routing decision ─────────────────────────────────────────
   function decideRoute(prefRoute, depDay, nomUnload) {
     if (prefRoute !== "semarang" && prefRoute !== "cilacap")
@@ -142,7 +142,7 @@ function simulate(cfg, ships) {
       return              { route:"cilacap",  reason:"Tetap Cilacap (antrian wajar)",        changed:false, wSem, wCil };
     }
   }
-
+ 
   // ── External ships (GC ports only — assume all external are GC type) ─
   const extArr = [];
   for (let m = 0; m < Math.ceil(cfg.simDays / 30); m++) {
@@ -162,20 +162,20 @@ function simulate(cfg, ships) {
     slot.portType = "gc";
     return { id:`EXT-${i+1}`, arrDay:e.day, berthIdx:bi, startDay, endDay, cap:e.cap, portType:"gc" };
   });
-
+ 
   // ── Owned ships ───────────────────────────────────────────────
   const routingLog = [];
   const activeShips = ships.filter(s => s.active);
-
+ 
   const shipResults = activeShips.map((ship, idx) => {
     const events = [];
     let day = idx * cfg.stagger, voyages = 0;
     const sums = Object.fromEntries(Object.keys(STATES).map(k => [k, 0]));
-
+ 
     // Select correct port based on ship type
     const originPort = ship.type === "gc" ? gcOriginA : tankerOriginA;
     const portType = ship.type === "gc" ? "gc" : "tanker";
-
+ 
     while (day < cfg.simDays) {
       // Load duration
       let lMin, lMax;
@@ -186,22 +186,22 @@ function simulate(cfg, ships) {
         [lMin, lMax] = [Math.max(2, Math.floor(b)), Math.ceil(b) + 1];
       }
       const nomLoad = ri(lMin, lMax);
-
+ 
       // Acquire berth at correct port
       const { startDay, slot } = originPort.alloc(day, nomLoad);
       slot.shipId = ship.id;
       slot.portType = portType;
-
+ 
       if (startDay > day) {
         events.push({ type:"waiting", start:day, end:startDay });
         sums.waiting += startDay - day;
       }
-
+ 
       // Loading + production downtime (type-specific)
       const { evts: loadEvts, endDay: loadEnd } = computeLoadEvents(startDay, nomLoad, ship.type);
       slot.end = loadEnd;
       for (const e of loadEvts) { events.push(e); sums[e.type] += e.end - e.start; }
-
+ 
       // Routing decision (GC only)
       let fr = ship.route;
       if (ship.type === "gc") {
@@ -210,41 +210,41 @@ function simulate(cfg, ships) {
         routingLog.push({ ship:ship.id, voyage:voyages+1, day:Math.round(loadEnd), ...dec });
         fr = dec.route;
       }
-
+ 
       const sOut = (fr === "bontang-gresik" || fr === "palembang-gresik") ? cfg.sailBontang : cfg.sailOut;
       events.push({ type:"sailing_out", start:loadEnd, end:loadEnd+sOut });
       sums.sailing_out += sOut;
-
+ 
       // Destination berth
       const dk = (fr === "bontang-gresik" || fr === "palembang-gresik") ? "gresik" : fr;
       const uDur = ri(cfg.unloadMin, cfg.unloadMax);
       const arrD = loadEnd + sOut;
       const { startDay: uStart, endDay: uEnd, slot: dSlot } = destMap[dk].alloc(arrD, uDur);
       dSlot.shipId = ship.id;
-
+ 
       if (uStart > arrD) {
         events.push({ type:"anchoring", start:arrD, end:uStart });
         sums.anchoring += uStart - arrD;
       }
       events.push({ type:"unloading", start:uStart, end:uEnd, dest:dk });
       sums.unloading += uDur;
-
+ 
       const sBack = (fr === "bontang-gresik" || fr === "palembang-gresik") ? cfg.sailBontang : cfg.sailBack;
       events.push({ type:"sailing_back", start:uEnd, end:uEnd+sBack });
       sums.sailing_back += sBack;
-
+ 
       voyages++;
       day = uEnd + sBack;
     }
-
+ 
     const covered = Object.values(sums).reduce((a, b) => a + b, 0);
     sums.idle = Math.max(0, cfg.simDays - covered);
     const prod = sums.loading + sums.sailing_out + sums.unloading + sums.sailing_back;
-
+ 
     return { ...ship, events, voyages, sums, util: prod / cfg.simDays,
       nonProd: sums.idle + sums.waiting + sums.anchoring + sums.prod_wait };
   });
-
+ 
   return {
     ships: shipResults, extEvents, gcDowntimes, tankerDowntimes, routingLog,
     gcOriginBSlots: gcOriginA.bSlots,
@@ -262,7 +262,7 @@ function simulate(cfg, ships) {
     },
   };
 }
-
+ 
 // ═══════════════════════════════════════════════════════════════
 // GANTT: SHIP JOURNEY (owned ships)
 // ═══════════════════════════════════════════════════════════════
@@ -307,7 +307,7 @@ function JourneyGantt({ ships, simDays }) {
     </div>
   );
 }
-
+ 
 // ═══════════════════════════════════════════════════════════════
 // GANTT: PORT BERTH VIEW (owned + external + downtime overlay)
 // ═══════════════════════════════════════════════════════════════
@@ -357,7 +357,7 @@ function PortGantt({ bSlots, prodDowntimes=[], simDays, berthNames=[], title="" 
     </div>
   );
 }
-
+ 
 // ═══════════════════════════════════════════════════════════════
 // STYLE HELPERS
 // ═══════════════════════════════════════════════════════════════
@@ -369,7 +369,7 @@ const C = {
   th:   { padding:"6px 8px", textAlign:"left", fontSize:10, textTransform:"uppercase", color:"var(--color-text-secondary)", borderBottom:"0.5px solid var(--color-border-tertiary)", whiteSpace:"nowrap" },
   td:   { padding:"7px 8px", fontFamily:"var(--font-mono)", fontSize:11 },
 };
-
+ 
 // ═══════════════════════════════════════════════════════════════
 // APP
 // ═══════════════════════════════════════════════════════════════
@@ -394,10 +394,10 @@ export default function App() {
   const [tab, setTab]       = useState("gantt");
   const [optCurve, setOpt]  = useState(null);
   const [busy, setBusy]     = useState(false);
-
+ 
   const upd     = (k,v) => setCfg(c=>({...c,[k]:v}));
   const updShip = (i,k,v) => setShips(s=>s.map((sh,j)=>j===i?{...sh,[k]:v}:sh));
-
+ 
   const run = () => { setBusy(true); setTimeout(()=>{ setResult(simulate(cfg,ships)); setBusy(false); },50); };
   const autoOpt = () => {
     setBusy(true);
@@ -414,7 +414,7 @@ export default function App() {
       setBusy(false);
     },60);
   };
-
+ 
   const tabSty = (a) => ({
     padding:"7px 14px", fontSize:12, fontWeight:500, cursor:"pointer",
     color:a?"var(--color-text-primary)":"var(--color-text-secondary)", background:"none", outline:"none",
@@ -441,19 +441,19 @@ export default function App() {
       <input type="number" min={min} max={max} value={cfg[k]} style={{width:"100%",fontFamily:"var(--font-mono)",fontSize:12}} onChange={e=>upd(k,+e.target.value)}/>
     </div>
   );
-
+ 
   const TABS = [
     ["gantt","Gantt Kapal"],["port-activity","Aktivitas Port"],
     ["ships","Detail Kapal"],["routing","Routing Decision"],
     ["overview","Overview"],["optimize","Kurva Optimasi"],["recommend","Rekomendasi Sistem"],
   ];
-
+ 
   return (
     <div style={{display:"flex",height:"100vh",fontFamily:"var(--font-sans)",fontSize:13}}>
-
+ 
       {/* ─── SIDEBAR ─────────────────────────────────────────── */}
       <div style={{width:262,minWidth:262,borderRight:"0.5px solid var(--color-border-tertiary)",overflowY:"auto",padding:12,background:"var(--color-background-secondary)"}}>
-
+ 
         {/* Decision variables */}
         <div style={{border:"0.5px solid var(--color-border-info)",borderRadius:8,padding:10,marginBottom:12,background:"var(--color-background-info)"}}>
           <div style={{...C.sec,color:"var(--color-text-info)",borderColor:"var(--color-border-info)"}}>🎯 Variabel Keputusan</div>
@@ -475,12 +475,12 @@ export default function App() {
           </div>
           <Slider label="Ambang labuh tujuan (hari tunggu)" k="anchorThr" min={0} max={10} unit=" hari"/>
         </div>
-
+ 
         {/* Sim params */}
         <div style={C.sec}>⚙ Parameter Simulasi</div>
         <Slider label="Durasi simulasi" k="simDays" min={30} max={365} step={30} unit=" hari"/>
         <Slider label="Kapal luar/bulan" k="extPerMonth" min={0} max={10} step={0.5} unit=" kapal"/>
-
+ 
         {/* Ports & Production */}
         <div style={C.sec}>🏭 Pelabuhan & Produksi</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
@@ -498,7 +498,7 @@ export default function App() {
             <Num label="Max (hr)" k="downMax" min={1} max={30}/>
           </div>
         </div>
-
+ 
         {/* Tanker downtime */}
         <div style={{padding:"8px",borderRadius:6,background:"var(--color-background-secondary)",marginBottom:8}}>
           <div style={{fontSize:10,fontWeight:500,color:"var(--color-text-secondary)",marginBottom:4}}>TANKER PRODUCTION DOWNTIME</div>
@@ -508,7 +508,7 @@ export default function App() {
             <Num label="Max (hr)" k="tankerDownMax" min={1} max={30}/>
           </div>
         </div>
-
+ 
         {/* Destination ports */}
         <div style={C.sec}>🚢 Pelabuhan Tujuan (Dermaga)</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
@@ -516,7 +516,7 @@ export default function App() {
           <Num label="Cilacap" k="cilBerths" min={1} max={6}/>
           <Num label="Gresik" k="grsBerths" min={1} max={6}/>
         </div>
-
+ 
         {/* Timing */}
         <div style={C.sec}>⏱ Waktu Operasional (hari)</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
@@ -524,7 +524,7 @@ export default function App() {
             ["unloadMin","Bongkar Min"],["unloadMax","Bongkar Max"],["sailOut","Layar Brkt"],["sailBack","Layar Balik"]
           ].map(([k,l])=><Num key={k} label={l} k={k}/>)}
         </div>
-
+ 
         {/* Actions */}
         <div style={{marginTop:10}}>
           <button style={{width:"100%",padding:"9px 0",borderRadius:6,border:"none",background:"var(--color-text-primary)",color:"var(--color-background-primary)",fontSize:12,fontWeight:500,cursor:"pointer",marginBottom:6,opacity:busy?0.6:1}} onClick={run} disabled={busy}>
@@ -542,7 +542,7 @@ export default function App() {
           <input type="number" value={cfg.seed} style={{width:"100%",fontFamily:"var(--font-mono)",fontSize:12}} onChange={e=>upd("seed",+e.target.value)}/>
         </div>
       </div>
-
+ 
       {/* ─── MAIN ─────────────────────────────────────────────── */}
       <div style={{flex:1,overflowY:"auto",padding:16}}>
         {!result?(
@@ -581,12 +581,12 @@ export default function App() {
               <Kpi label="GC Down" val={`${result.metrics.gcDownDays}h`} sub={`${result.gcDowntimes.length} kejadian`} color={result.metrics.gcDownDays>0?"var(--color-text-danger)":"var(--color-text-success)"}/>
               <Kpi label="Tanker Down" val={`${result.metrics.tankerDownDays}h`} sub={`${result.tankerDowntimes.length} kejadian`} color={result.metrics.tankerDownDays>0?"var(--color-text-danger)":"var(--color-text-success)"}/>
             </div>
-
+ 
             {/* Tabs */}
             <div style={{display:"flex",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:14,flexWrap:"wrap"}}>
               {TABS.map(([id,label])=><button key={id} style={tabSty(tab===id)} onClick={()=>setTab(id)}>{label}</button>)}
             </div>
-
+ 
             {tab==="gantt"        && <GanttTab       result={result} cfg={cfg}/>}
             {tab==="port-activity" && <PortActivityTab result={result} cfg={cfg}/>}
             {tab==="ships"        && <ShipsTab        result={result} cfg={cfg}/>}
@@ -600,7 +600,7 @@ export default function App() {
     </div>
   );
 }
-
+ 
 // ═══════════════════════════════════════════════════════════════
 // TABS (using placeholder implementations - keep existing from previous)
 // ═══════════════════════════════════════════════════════════════
@@ -620,7 +620,7 @@ function GanttTab({ result, cfg }) {
     </div>
   );
 }
-
+ 
 function PortActivityTab({ result, cfg }) {
   const Legend = ({ items }) => (
     <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:10}}>
@@ -631,10 +631,10 @@ function PortActivityTab({ result, cfg }) {
       ))}
     </div>
   );
-
+ 
   const shipLegend = Object.entries(SHIP_COLORS).map(([id,c])=>[id,c]);
   shipLegend.push(["Kapal Luar", EXT_COLOR]);
-
+ 
   return (
     <div>
       {/* GC Port Gantt */}
@@ -652,7 +652,7 @@ function PortActivityTab({ result, cfg }) {
           Port-II dan Port-V khusus untuk loading General Cargo (milik + kapal luar eksternal)
         </div>
       </div>
-
+ 
       {/* Tanker Port Gantt */}
       <div style={C.card}>
         <div style={C.ct}>⛽ Pelabuhan Gas Tanker (Port-Gas-1 & Port-Gas-2)</div>
@@ -668,7 +668,7 @@ function PortActivityTab({ result, cfg }) {
           Port-Gas terpisah untuk loading gas tanker — produksi gas independent dari GC
         </div>
       </div>
-
+ 
       {/* Destination ports */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
         {[
@@ -682,7 +682,7 @@ function PortActivityTab({ result, cfg }) {
           </div>
         ))}
       </div>
-
+ 
       {/* External ships table */}
       <div style={C.card}>
         <div style={C.ct}>Daftar Kapal Luar (General Cargo) — {result.extEvents.length} Kunjungan</div>
@@ -711,9 +711,351 @@ function PortActivityTab({ result, cfg }) {
   );
 }
 
-// Placeholder implementations for remaining tabs (use full implementations from previous version)
-function ShipsTab({result,cfg}){return<div style={C.card}><div style={C.ct}>Detail Kapal — Lihat file lengkap</div></div>;}
-function RoutingTab({result}){return<div style={C.card}><div style={C.ct}>Routing Decisions — Lihat file lengkap</div></div>;}
-function OverviewTab({result,cfg}){return<div style={C.card}><div style={C.ct}>Overview — Lihat file lengkap</div></div>;}
-function OptimizeTab({optCurve}){return<div style={C.card}><div style={C.ct}>Optimize — Lihat file lengkap</div></div>;}
-function RecommendTab({cfg}){return<div style={C.card}><div style={C.ct}>Rekomendasi Sistem — Lihat file lengkap</div></div>;}
+// ─── TAB: GANTT ───────────────────────────────────────────────
+function GanttTab({ result, cfg }) {
+  return (
+    <div style={card}>
+      <div style={ct}>Jadwal Kapal — Gantt Chart ({cfg.simDays} Hari Simulasi)</div>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:10, marginBottom:12 }}>
+        {Object.entries(STATES).map(([k, v]) => (
+          <div key={k} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--color-text-secondary)" }}>
+            <div style={{ width:12, height:12, borderRadius:2, background:v.color, flexShrink:0 }}/>
+            {v.label}
+          </div>
+        ))}
+      </div>
+      <Gantt ships={result.ships} simDays={cfg.simDays} />
+      <div style={{ marginTop:10, fontSize:11, color:"var(--color-text-tertiary)" }}>
+        % di kanan = utilisasi produktif (muat + layar + bongkar) · Scroll horizontal untuk melihat keseluruhan timeline
+      </div>
+    </div>
+  );
+}
+
+// ─── TAB: OVERVIEW ────────────────────────────────────────────
+function OverviewTab({ result, cfg }) {
+  const barData = result.ships.map(ship => {
+    const d = { name: ship.id };
+    Object.keys(STATES).forEach(k => { d[k] = Math.round(ship.sums[k] || 0); });
+    return d;
+  });
+
+  const totals = {};
+  Object.keys(STATES).forEach(k => {
+    totals[k] = Math.round(result.ships.reduce((s, sh) => s + (sh.sums[k] || 0), 0));
+  });
+  const pieData = Object.entries(totals).filter(([,v]) => v > 0)
+    .map(([k, v]) => ({ name: STATES[k].label, value: v, color: STATES[k].color }));
+
+  const cycleGcSm = `${cfg.gcSmMin+cfg.sailOut+cfg.unloadMin+cfg.sailBack}–${cfg.gcSmMax+cfg.sailOut+cfg.unloadMax+cfg.sailBack}`;
+  const cycleGcLg = `${cfg.gcLgMin+cfg.sailOut+cfg.unloadMin+cfg.sailBack}–${cfg.gcLgMax+cfg.sailOut+cfg.unloadMax+cfg.sailBack}`;
+
+  return (
+    <div>
+      <div style={{ display:"grid", gridTemplateColumns:"3fr 2fr", gap:12 }}>
+        <div style={card}>
+          <div style={ct}>Breakdown Waktu per Kapal (hari)</div>
+          <ResponsiveContainer width="100%" height={230}>
+            <BarChart data={barData} margin={{ top:0, right:8, bottom:0, left:-22 }}>
+              <XAxis dataKey="name" tick={{ fontSize:10, fontFamily:"var(--font-mono)" }} />
+              <YAxis tick={{ fontSize:10 }} />
+              <Tooltip contentStyle={{ fontSize:11, borderRadius:6 }} />
+              <Legend formatter={v => <span style={{ fontSize:10 }}>{STATES[v]?.label}</span>} />
+              {Object.entries(STATES).map(([k, v]) => (
+                <Bar key={k} dataKey={k} stackId="a" fill={v.color} name={k} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={card}>
+          <div style={ct}>Komposisi Waktu Keseluruhan</div>
+          <ResponsiveContainer width="100%" height={230}>
+            <PieChart>
+              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}
+                label={({ percent }) => `${Math.round(percent*100)}%`} labelLine={false} fontSize={10}>
+                {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
+              </Pie>
+              <Tooltip contentStyle={{ fontSize:11, borderRadius:6 }} formatter={v => [`${v} hari`]} />
+              <Legend formatter={v => <span style={{ fontSize:10 }}>{v}</span>} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={ct}>Parameter Model Optimasi Aktif</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 }}>
+          {[
+            ["Stagger interval", `${cfg.stagger} hari`],
+            ["Cycle time GC-7000", `${cycleGcSm} hari`],
+            ["Cycle time GC-11000", `${cycleGcLg} hari`],
+            ["Dermaga aktif", `${cfg.berths} (Port-II & V)`],
+            ["Rate muat total", `${cfg.loadRate * cfg.berths} ton/hari`],
+            ["Prod. Palembang", "5.400 ton/hari"],
+            ["Kapal luar/bln", cfg.extPerMonth],
+            ["Durasi simulasi", `${cfg.simDays} hari`],
+          ].map(([k, v]) => (
+            <div key={k} style={{ padding:"8px 10px", background:"var(--color-background-secondary)", borderRadius:6 }}>
+              <div style={{ fontSize:10, textTransform:"uppercase", color:"var(--color-text-secondary)", marginBottom:2 }}>{k}</div>
+              <div style={{ fontFamily:"var(--font-mono)", fontWeight:500, fontSize:13 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TAB: SHIPS ───────────────────────────────────────────────
+function ShipsTab({ result, cfg }) {
+  const th = { padding:"6px 10px", textAlign:"left", fontSize:10, textTransform:"uppercase", color:"var(--color-text-secondary)", borderBottom:"0.5px solid var(--color-border-tertiary)", whiteSpace:"nowrap" };
+  const td = (extra={}) => ({ padding:"8px 10px", fontFamily:"var(--font-mono)", fontSize:12, ...extra });
+
+  return (
+    <div>
+      <div style={{ ...card, overflowX:"auto" }}>
+        <div style={ct}>Performa Kapal — {cfg.simDays} Hari Simulasi</div>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+          <thead>
+            <tr>{["Kapal","Tipe","Kapasitas","Rute","Voyage","Muat","Layar","Bongkar","Antri","Idle","Utilisasi"].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {result.ships.map((ship, i) => (
+              <tr key={ship.id} style={{ background: i%2===0?"transparent":"var(--color-background-secondary)" }}>
+                <td style={td({ fontWeight:500 })}>{ship.id}</td>
+                <td style={{ padding:"8px 10px" }}>
+                  <span style={{ fontSize:10, padding:"2px 7px", borderRadius:4,
+                    background: ship.type==="gc"?"var(--color-background-info)":"var(--color-background-success)",
+                    color: ship.type==="gc"?"var(--color-text-info)":"var(--color-text-success)" }}>
+                    {ship.type==="gc"?"GC":"TANKER"}
+                  </span>
+                </td>
+                <td style={td()}>{ship.cap.toLocaleString()}</td>
+                <td style={{ ...td(), fontSize:11, color:"var(--color-text-secondary)" }}>{ship.route}</td>
+                <td style={td({ color:"var(--color-text-success)", fontWeight:500 })}>{ship.voyages}</td>
+                <td style={td()}>{Math.round(ship.sums.loading)}</td>
+                <td style={td()}>{Math.round((ship.sums.sailing_out||0)+(ship.sums.sailing_back||0))}</td>
+                <td style={td()}>{Math.round(ship.sums.unloading)}</td>
+                <td style={td({ color: (ship.sums.waiting||0)>0?"var(--color-text-danger)":"inherit" })}>{Math.round(ship.sums.waiting||0)}</td>
+                <td style={td({ color:"var(--color-text-secondary)" })}>{Math.round(ship.sums.idle)}</td>
+                <td style={{ padding:"8px 10px", minWidth:110 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <div style={{ flex:1, height:5, background:"var(--color-background-tertiary)", borderRadius:3, overflow:"hidden" }}>
+                      <div style={{ height:"100%", width:`${Math.round(ship.util*100)}%`, borderRadius:3,
+                        background: ship.util>0.75?"var(--color-text-success)":ship.util>0.5?"var(--color-text-warning)":"var(--color-text-danger)" }}/>
+                    </div>
+                    <span style={{ fontFamily:"var(--font-mono)", fontSize:11, minWidth:32 }}>{Math.round(ship.util*100)}%</span>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        <div style={card}>
+          <div style={ct}>Cargo per Kapal (ton)</div>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={result.ships.map(s => ({ name:s.id, cargo:s.voyages*s.cap }))}>
+              <XAxis dataKey="name" tick={{ fontSize:10, fontFamily:"var(--font-mono)" }} />
+              <YAxis tick={{ fontSize:10 }} />
+              <Tooltip contentStyle={{ fontSize:11, borderRadius:6 }} formatter={v => [v.toLocaleString()+" ton"]} />
+              <Bar dataKey="cargo" name="Cargo" fill="#185FA5" radius={[3,3,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={card}>
+          <div style={ct}>Utilisasi per Kapal (%)</div>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={result.ships.map(s => ({ name:s.id, util:Math.round(s.util*100), nonProd:Math.round(s.nonProd) }))}>
+              <XAxis dataKey="name" tick={{ fontSize:10, fontFamily:"var(--font-mono)" }} />
+              <YAxis tick={{ fontSize:10 }} domain={[0,100]} />
+              <Tooltip contentStyle={{ fontSize:11, borderRadius:6 }} formatter={v => [v+"%"]} />
+              <Bar dataKey="util" name="Utilisasi %" fill="#3B6D11" radius={[3,3,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TAB: PORT ────────────────────────────────────────────────
+function PortTab({ result, cfg }) {
+  const months = Math.ceil(cfg.simDays / 30);
+  const monthData = Array.from({ length: months }, (_, m) => {
+    const from = m * 30, to = Math.min(from + 30, cfg.simDays);
+    let owned = 0, ext = 0;
+    for (const sh of result.ships)
+      for (const e of sh.events)
+        if (e.type === "loading") owned += Math.max(0, Math.min(e.end, to) - Math.max(e.start, from));
+    for (const e of result.extEvents)
+      ext += Math.max(0, Math.min(e.endDay, to) - Math.max(e.startDay, from));
+    const idle = Math.max(0, cfg.berths * (to - from) - owned - ext);
+    return { name:`Bln ${m+1}`, owned:Math.round(owned), external:Math.round(ext), idle:Math.round(idle) };
+  });
+
+  const queueItems = result.ships.flatMap(sh =>
+    sh.events.filter(e => e.type==="waiting" && e.end > e.start)
+      .map(e => ({ ship:sh.id, start:e.start, days:e.end-e.start }))
+  );
+
+  const totalBerthDays = cfg.berths * cfg.simDays;
+  const usedBerthDays  = monthData.reduce((s, m) => s + m.owned + m.external, 0);
+
+  return (
+    <div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:12 }}>
+        {[
+          ["Utilisasi Dermaga Total", `${Math.round(usedBerthDays/totalBerthDays*100)}%`, "dari kapasitas dermaga-hari"],
+          ["Kapal Luar Masuk", result.extEvents.length, `dalam ${cfg.simDays} hari`],
+          ["Kejadian Antrian", queueItems.length, `total ${queueItems.reduce((s,q)=>s+q.days,0).toFixed(1)} hari antri`],
+        ].map(([l, v, s]) => (
+          <div key={l} style={{ padding:"10px 12px", borderRadius:8, background:"var(--color-background-secondary)", border:"0.5px solid var(--color-border-tertiary)" }}>
+            <div style={{ fontSize:10, textTransform:"uppercase", color:"var(--color-text-secondary)", marginBottom:3 }}>{l}</div>
+            <div style={{ fontSize:22, fontWeight:500, fontFamily:"var(--font-mono)" }}>{v}</div>
+            <div style={{ fontSize:11, color:"var(--color-text-tertiary)", marginTop:2 }}>{s}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={card}>
+        <div style={ct}>Utilisasi Dermaga per Bulan (Dermaga-Hari)</div>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={monthData} margin={{ top:0, right:10, bottom:0, left:-20 }}>
+            <XAxis dataKey="name" tick={{ fontSize:10 }} />
+            <YAxis tick={{ fontSize:10 }} />
+            <Tooltip contentStyle={{ fontSize:11, borderRadius:6 }} />
+            <Legend formatter={v => <span style={{ fontSize:10 }}>{v==="owned"?"Kapal Milik":v==="external"?"Kapal Luar":"Dermaga Idle"}</span>} />
+            <Bar dataKey="owned"    stackId="a" fill="#185FA5" name="owned" />
+            <Bar dataKey="external" stackId="a" fill="#BA7517" name="external" />
+            <Bar dataKey="idle"     stackId="a" fill="#D3D1C7" name="idle" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        <div style={card}>
+          <div style={ct}>Daftar Kejadian Antrian Kapal Milik</div>
+          {queueItems.length === 0
+            ? <div style={{ fontSize:12, color:"var(--color-text-success)", padding:"4px 0" }}>✓ Tidak ada antrian kapal milik pada simulasi ini</div>
+            : (
+              <table style={{ width:"100%", fontSize:11, borderCollapse:"collapse" }}>
+                <thead><tr>{["Kapal","Mulai antri (hari)","Lama antri"].map(h => <th key={h} style={{ padding:"4px 8px", textAlign:"left", fontSize:10, color:"var(--color-text-secondary)", borderBottom:"0.5px solid var(--color-border-tertiary)" }}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {queueItems.map((q, i) => (
+                    <tr key={i} style={{ background: i%2===0?"transparent":"var(--color-background-secondary)" }}>
+                      <td style={{ padding:"5px 8px", fontFamily:"var(--font-mono)", fontWeight:500 }}>{q.ship}</td>
+                      <td style={{ padding:"5px 8px", fontFamily:"var(--font-mono)" }}>Hari {q.start}</td>
+                      <td style={{ padding:"5px 8px", fontFamily:"var(--font-mono)", color:"var(--color-text-danger)" }}>{q.days.toFixed(1)} hari</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
+        </div>
+        <div style={card}>
+          <div style={ct}>Info Port Palembang</div>
+          <table style={{ width:"100%", fontSize:12 }}>
+            <tbody>
+              {[
+                ["Dermaga", `${cfg.berths} (Port-II & Port-V)`],
+                ["Rate muat per dermaga", `${cfg.loadRate.toLocaleString()} ton/hari`],
+                ["Rate muat total", `${(cfg.loadRate*cfg.berths).toLocaleString()} ton/hari`],
+                ["Kapasitas produksi", "5.400 ton/hari"],
+                ["Jam operasi dermaga", "20 jam/hari · 100 ton/jam"],
+                ["Kapal luar rata-rata", `${cfg.extPerMonth}/bulan (${cfg.extCapMin.toLocaleString()}–${cfg.extCapMax.toLocaleString()} ton)`],
+              ].map(([k, v]) => (
+                <tr key={k}>
+                  <td style={{ padding:"5px 0", color:"var(--color-text-secondary)" }}>{k}</td>
+                  <td style={{ padding:"5px 0", textAlign:"right", fontFamily:"var(--font-mono)", fontWeight:500 }}>{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TAB: OPTIMIZE ────────────────────────────────────────────
+function OptimizeTab({ optCurve }) {
+  if (!optCurve) return (
+    <div style={{ ...card, textAlign:"center", padding:40 }}>
+      <div style={{ fontSize:40, marginBottom:12 }}>📊</div>
+      <div style={{ fontWeight:500, marginBottom:6 }}>Belum ada data kurva optimasi</div>
+      <div style={{ fontSize:12, color:"var(--color-text-secondary)" }}>Klik <strong>Cari Stagger Optimal</strong> di panel kiri untuk menjalankan analisis sensitivitas stagger 1–15 hari</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ ...card, border:"0.5px solid var(--color-border-success)", background:"var(--color-background-success)" }}>
+        <div style={{ display:"flex", gap:24, flexWrap:"wrap" }}>
+          <div>
+            <div style={{ fontSize:10, textTransform:"uppercase", color:"var(--color-text-success)", letterSpacing:"0.5px" }}>Stagger Optimal Ditemukan</div>
+            <div style={{ fontSize:28, fontWeight:500, fontFamily:"var(--font-mono)", color:"var(--color-text-success)", marginTop:2 }}>{optCurve.stagger} hari</div>
+          </div>
+          <div>
+            <div style={{ fontSize:10, textTransform:"uppercase", color:"var(--color-text-success)", letterSpacing:"0.5px" }}>Min. Total Non-Produktif</div>
+            <div style={{ fontSize:28, fontWeight:500, fontFamily:"var(--font-mono)", color:"var(--color-text-success)", marginTop:2 }}>{Math.round(optCurve.idle)} kapal-hari</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={ct}>Kurva Sensitivitas: Total Non-Produktif vs Stagger Interval</div>
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={optCurve.pts} margin={{ top:5, right:20, bottom:5, left:0 }}>
+            <XAxis dataKey="stagger" tick={{ fontSize:11 }} label={{ value:"Stagger (hari)", position:"insideBottom", offset:-2, fontSize:11 }} />
+            <YAxis tick={{ fontSize:11 }} />
+            <Tooltip contentStyle={{ fontSize:11, borderRadius:6 }} formatter={(v, n) => [v, n==="nonProd"?"Non-Produktif (hari)":"Utilisasi (%)"]} />
+            <Legend formatter={v => <span style={{ fontSize:10 }}>{v==="nonProd"?"Non-Produktif (hari)":"Utilisasi (%)"}</span>} />
+            <Line type="monotone" dataKey="nonProd" stroke="#E24B4A" strokeWidth={2} dot={{ r:4 }} name="nonProd"
+              label={{ position:"top", fontSize:9, fill:"var(--color-text-secondary)" }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div style={card}>
+        <div style={ct}>Utilisasi Rata-rata vs Stagger Interval</div>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={optCurve.pts} margin={{ top:5, right:20, bottom:5, left:0 }}>
+            <XAxis dataKey="stagger" tick={{ fontSize:11 }} label={{ value:"Stagger (hari)", position:"insideBottom", offset:-2, fontSize:11 }} />
+            <YAxis tick={{ fontSize:11 }} domain={[0,100]} unit="%" />
+            <Tooltip contentStyle={{ fontSize:11, borderRadius:6 }} formatter={v => [v+"%", "Utilisasi"]} />
+            <Line type="monotone" dataKey="util" stroke="#185FA5" strokeWidth={2} dot={{ r:4 }} name="util" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div style={card}>
+        <div style={ct}>Tabel Lengkap Sensitivitas</div>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+          <thead>
+            <tr>{["Stagger (hari)","Non-Produktif (kapal-hari)","Utilisasi (%)","Status"].map(h => (
+              <th key={h} style={{ padding:"6px 10px", textAlign:"left", fontSize:10, textTransform:"uppercase", color:"var(--color-text-secondary)", borderBottom:"0.5px solid var(--color-border-tertiary)" }}>{h}</th>
+            ))}</tr>
+          </thead>
+          <tbody>
+            {optCurve.pts.map((pt, i) => (
+              <tr key={i} style={{ background: pt.stagger===optCurve.stagger?"var(--color-background-success)":i%2===0?"transparent":"var(--color-background-secondary)" }}>
+                <td style={{ padding:"7px 10px", fontFamily:"var(--font-mono)", fontWeight:500 }}>{pt.stagger}</td>
+                <td style={{ padding:"7px 10px", fontFamily:"var(--font-mono)", color:"var(--color-text-danger)" }}>{pt.nonProd}</td>
+                <td style={{ padding:"7px 10px", fontFamily:"var(--font-mono)" }}>{pt.util}%</td>
+                <td style={{ padding:"7px 10px" }}>
+                  {pt.stagger===optCurve.stagger
+                    ? <span style={{ fontSize:10, padding:"2px 8px", borderRadius:4, background:"var(--color-background-success)", color:"var(--color-text-success)" }}>✓ Optimal</span>
+                    : <span style={{ fontSize:10, color:"var(--color-text-tertiary)" }}>—</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
