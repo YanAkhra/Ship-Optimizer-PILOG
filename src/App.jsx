@@ -711,27 +711,6 @@ function PortActivityTab({ result, cfg }) {
   );
 }
 
-// ─── TAB: GANTT ───────────────────────────────────────────────
-function GanttTab({ result, cfg }) {
-  return (
-    <div style={card}>
-      <div style={ct}>Jadwal Kapal — Gantt Chart ({cfg.simDays} Hari Simulasi)</div>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:10, marginBottom:12 }}>
-        {Object.entries(STATES).map(([k, v]) => (
-          <div key={k} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--color-text-secondary)" }}>
-            <div style={{ width:12, height:12, borderRadius:2, background:v.color, flexShrink:0 }}/>
-            {v.label}
-          </div>
-        ))}
-      </div>
-      <Gantt ships={result.ships} simDays={cfg.simDays} />
-      <div style={{ marginTop:10, fontSize:11, color:"var(--color-text-tertiary)" }}>
-        % di kanan = utilisasi produktif (muat + layar + bongkar) · Scroll horizontal untuk melihat keseluruhan timeline
-      </div>
-    </div>
-  );
-}
-
 // ─── TAB: OVERVIEW ────────────────────────────────────────────
 function OverviewTab({ result, cfg }) {
   const barData = result.ships.map(ship => {
