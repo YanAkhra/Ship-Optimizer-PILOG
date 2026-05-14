@@ -1,0 +1,106 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Design System Tokens */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Light Theme (Default) */
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f8fafc;
+  --color-background-tertiary: #f1f5f9;
+  --color-background-info: #eff6ff;
+  --color-background-success: #f0fdf4;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #94a3b8;
+  --color-text-info: #2563eb;
+  --color-text-success: #16a34a;
+  --color-text-warning: #d97706;
+  --color-text-danger: #dc2626;
+
+  --color-border-primary: #e2e8f0;
+  --color-border-secondary: #cbd5e1;
+  --color-border-tertiary: #e2e8f0;
+  --color-border-info: #bfdbfe;
+  --color-border-success: #bbf7d0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background-primary: #0f172a;
+    --color-background-secondary: #1e293b;
+    --color-background-tertiary: #334155;
+    --color-background-info: #172554;
+    --color-background-success: #064e3b;
+
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+    --color-text-tertiary: #64748b;
+    --color-text-info: #60a5fa;
+    --color-text-success: #4ade80;
+    --color-text-warning: #fbbf24;
+    --color-text-danger: #f87171;
+
+    --color-border-primary: #334155;
+    --color-border-secondary: #475569;
+    --color-border-tertiary: #334155;
+    --color-border-info: #1e3a8a;
+    --color-border-success: #065f46;
+
+    background-color: #0f172a;
+    color: #f8fafc;
+  }
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-content: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+}
+
+button {
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+input[type="range"] {
+  accent-color: var(--color-text-info);
+}
+
+input[type="number"], select {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-secondary);
+  color: var(--color-text-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--color-text-success);
+}
