@@ -31,7 +31,7 @@ A high-performance maritime supply chain simulation and optimization tool built 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/naimackerman/ship-optimizer.git
+   git clone https://github.com/YanAkhra/Ship-Optimizer-PILOG.git
    cd ship-optimizer
    ```
 

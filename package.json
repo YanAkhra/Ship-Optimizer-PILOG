@@ -9,15 +9,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/naimackerman/ship-optimizer.git"
+    "url": "git+https://github.com/YanAkhra/Ship-Optimizer-PILOG.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/naimackerman/ship-optimizer/issues"
+    "url": "https://github.com/YanAkhra/Ship-Optimizer-PILOG/issues"
   },
-  "homepage": "https://github.com/naimackerman/ship-optimizer#readme",
+  "homepage": "https://github.com/YanAkhra/Ship-Optimizer-PILOG#readme",
   "description": "",
   "dependencies": {
     "react": "^19.2.6",
