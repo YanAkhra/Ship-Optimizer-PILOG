@@ -16,20 +16,20 @@ const STATES = {
 };
 
 const SHIP_COLORS = {
-  "GC-01":"#185FA5","GC-02":"#3B6D11","GC-03":"#BA7517","GC-04":"#534AB7",
-  "GC-05":"#0F6E56","GC-06":"#993556","GT-01":"#854F0B","GT-02":"#A32D2D",
+  "Pusri_Indonesia_1":"#185FA5","Pusri_Indonesia":"#3B6D11","Mochtar_Prabu":"#BA7517","Abusamah":"#534AB7",
+  "Julianto":"#0F6E56","Soemantri":"#993556","SMB_II":"#854F0B","Salmon_Mustafa":"#A32D2D",
 };
 const EXT_COLOR = "#D4537E";
 
 const INIT_SHIPS = [
-  { id:"GC-01", type:"gc",     cap:7000,  route:"semarang",         active:true },
-  { id:"GC-02", type:"gc",     cap:7000,  route:"cilacap",          active:true },
-  { id:"GC-03", type:"gc",     cap:7000,  route:"semarang",         active:true },
-  { id:"GC-04", type:"gc",     cap:7000,  route:"cilacap",          active:true },
-  { id:"GC-05", type:"gc",     cap:7000,  route:"semarang",         active:true },
-  { id:"GC-06", type:"gc",     cap:11000, route:"semarang",         active:true },
-  { id:"GT-01", type:"tanker", cap:5700,  route:"palembang-gresik", active:true },
-  { id:"GT-02", type:"tanker", cap:13200, route:"bontang-gresik",   active:true },
+  { id:"Pusri_Indonesia_1", type:"gc",     cap:11000, route:"semarang",         active:true },
+  { id:"Pusri_Indonesia",   type:"gc",     cap:7000,  route:"cilacap",          active:true },
+  { id:"Mochtar_Prabu", type:"gc",         cap:7000,  route:"semarang",         active:true },
+  { id:"Abusamah", type:"gc",              cap:7000,  route:"cilacap",          active:true },
+  { id:"Julianto", type:"gc",              cap:7000,  route:"semarang",         active:true },
+  { id:"Soemantri", type:"gc",             cap:7000,  route:"semarang",         active:true },
+  { id:"SMB_II", type:"tanker",            cap:5700,  route:"palembang-gresik", active:true },
+  { id:"Salmon_Mustafa", type:"tanker",    cap:13200, route:"bontang-gresik",   active:true },
 ];
 
 const INIT_CURRENT_STATES = INIT_SHIPS.map(sh => ({
